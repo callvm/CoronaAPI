@@ -31,7 +31,7 @@ public class ProvinceReport implements Serializable {
     private Long id;
 
     @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "dailReport_id", nullable = false)
+    @JoinColumn(name = "dailyReport_id", nullable = false)
     @JsonIgnore
     DailyReport dailyReport;
 
@@ -87,6 +87,11 @@ public class ProvinceReport implements Serializable {
         this.percentChange = percentChange;
     }
 
-   
+    @Override
+    public String toString() {
+        return "ProvinceReport{" + "id=" + id + ", provinceName=" + provinceName + ", casesToday=" + casesToday + ", casesTotal=" + casesTotal + ", percentChange=" + percentChange + '}';
+    }
+
+    
 
 }

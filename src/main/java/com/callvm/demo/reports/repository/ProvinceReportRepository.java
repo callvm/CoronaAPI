@@ -6,6 +6,7 @@
 package com.callvm.demo.reports.repository;
 
 import com.callvm.demo.reports.model.ProvinceReport;
+import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -13,5 +14,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @author callum
  */
 public interface ProvinceReportRepository extends JpaRepository<ProvinceReport, Long> {
-    
+    ProvinceReport[] findAllById(Long id);
+    ProvinceReport[] findAllByDailyReportId(Long id);
 }

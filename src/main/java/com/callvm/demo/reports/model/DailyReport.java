@@ -82,6 +82,11 @@ public class DailyReport implements Serializable{
     public void setPercentChange(double percentChange) {
         this.percentChange = percentChange;
     }
+
+    @Override
+    public String toString() {
+        return "DailyReport{" + "id=" + id + ", currentDay=" + currentDay + ", casesToday=" + casesToday + ", casesTotal=" + casesTotal + ", percentChange=" + percentChange + '}';
+    }
     
     
     

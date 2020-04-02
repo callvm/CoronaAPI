@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.callvm.demo.reports.repository.DailyReportRepository;
 import com.callvm.demo.reports.repository.ProvinceReportRepository;
 import com.callvm.demo.reports.service.ProvinceReportServiceImpl;
+import com.callvm.demo.reports.service.UpdateService;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -31,10 +32,10 @@ import java.util.Set;
 public class WebController {
 
     @Autowired
-    private DailyReportServiceImpl reportService;
+    private UpdateService updateService;
 
     @Autowired
-    private DailyReportRepository reportRepository;
+    private DailyReportRepository dailyReportRepository;
 
     @Autowired
     private ProvinceReportRepository provinceReportRepository;
@@ -45,37 +46,12 @@ public class WebController {
     @GetMapping("/latest")
     public DailyReport getprov() {
 
-        return reportRepository.findById(Long.parseLong("1")).get();
+        return dailyReportRepository.findById(Long.parseLong("1")).get();
     }
 
     @GetMapping("/update")
     public void update() throws FileNotFoundException, IOException {
-        File f = new File("data.txt");
-        Set<ProvinceReport> provinceReports = new HashSet();
-        FileReader fileReader = new FileReader(f);
-        BufferedReader br = new BufferedReader(fileReader);
-
-        Date d = new Date(System.currentTimeMillis());
-        DailyReport dr = new DailyReport();
-        dr.setCurrentDay(d);
-
-        String line;
-        while ((line = br.readLine()) != null) {
-            String[] out = line.split("-");
-            ProvinceReport pr = new ProvinceReport();
-            pr.setProvinceName(out[0]);
-           
-            pr.setCasesTotal(Integer.parseInt(out[1]));
-
-            pr.setDailyReport(dr);
-            provinceReports.add(pr);
-            provinceReportService.save(pr);
-        }
-
-        if (reportRepository.findByCurrentDay(d) == null) {
-            dr.setProvinceReports(provinceReports);
-            reportService.save(dr);
-        }
+        updateService.updateFromTextFile();
 
     }
 
