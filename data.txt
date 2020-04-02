@@ -1,0 +1,7 @@
+Eastern Cape-1
+Free State-7
+Gauteng-125
+KwaZulu Natal-27
+Limpopo-1
+Mpumalanga-5
+Western Cape-74
