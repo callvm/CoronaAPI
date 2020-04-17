@@ -1,0 +1,1768 @@
+﻿function DashBoardView()
+{
+    this.appElement = document.getElementById("app");
+
+    window.addEventListener("resize", function () {
+        if (window.innerWidth < 1024) {
+            window.location.href = "mobileApp.html";
+        }
+    });
+
+    this.model = new DashBoardModel();
+    
+    this.resultTableView = new PartyResultsView(this);
+    this.leadingPartyView = new LeadingPartyView(this);
+    this.voterStatsView = new VoterStatsView(this);
+    this.mapView = new MapView(this);
+
+    this.resize_state = 'min';
+    this.comparison_table_view = null;
+    this.resultData = null;
+    this.dataset = "";
+    this.election_event = "";
+    this.area = "";
+    this.key = "";
+    this.event = "";
+    this.isOutOfCountry = false;
+
+    this.selectedEventID = '699';
+    this.selectedEventYear = '';
+    this.selectedArea = 'National';
+    this.isNational = true;
+
+    this.arrIdxs = [];
+    this.parentTest = null;
+}
+
+
+//Fetch json files from web server
+DashBoardView.prototype.FetchResults = function (dataset, election_event, area, event) {
+    var ref = this;
+
+    try
+    {
+        
+        if (election_event == '699') {
+            this.isNational = true;
+            this.selectedEventYear = '2019'
+        }
+        else if (election_event == null) {
+            this.isNational = true;
+
+            if (this.selectedEventID == '42') {
+                this.selectedEventID = '1';
+                election_event = '1';
+            }
+
+            if (this.selectedEventID == '50') {
+                this.selectedEventID = '45';
+                election_event = '45';
+            }
+            if (this.selectedEventID == '169') {
+                this.selectedEventID = '146';
+                election_event = '146';
+            }
+            if (this.selectedEventID == '292') {
+                this.selectedEventID = '291';
+                election_event = '291';
+            }
+            if (this.selectedEventID == '827') {
+                this.selectedEventID = '699';
+                election_event = '699';
+            }
+        }
+        else if (area == 'National') {
+            this.isNational = true;
+        }
+        else {
+            this.isNational = false;
+        }
+
+        if (election_event == null) {
+            election_event = this.selectedEventID;
+        }
+
+        if (area != 'National' && area != 'Province99') {
+            this.isNational = false;
+
+            if (this.selectedEventID == '1') {
+                this.selectedEventID = '42';
+                election_event = '42';
+            }          
+
+            if (this.selectedEventID == '45') {
+                this.selectedEventID = '50';
+                election_event = '50';
+            }
+            if (this.selectedEventID == '146') {
+                this.selectedEventID = '169';
+                election_event = '169';
+            }            
+            if (this.selectedEventID == '291') {
+                this.selectedEventID = '292';
+                election_event = '292';
+            }            
+            if (this.selectedEventID == '699') {
+                this.selectedEventID = '827';
+                election_event = '827';
+            }
+        }
+
+        document.getElementById("imgtl2004").src = "imgs/time_icon.png";
+        document.getElementById("imgtl2009").src = "imgs/time_icon.png";
+        document.getElementById("imgtl2014").src = "imgs/time_icon.png";
+        document.getElementById("imgtl2019").src = "imgs/time_icon.png";
+
+        document.getElementById("tl2004").style.color = "darkgrey";
+        document.getElementById("tl2004").style.fontWeight = "normal";
+        document.getElementById("tl2009").style.color = "darkgrey";
+        document.getElementById("tl2009").style.fontWeight = "normal";
+        document.getElementById("tl2014").style.color = "darkgrey";
+        document.getElementById("tl2014").style.fontWeight = "normal";
+        document.getElementById("tl2019").style.color = "darkgrey";
+        document.getElementById("tl2019").style.fontWeight = "normal";
+
+        //Fetch Party Lookups
+        ref.model.FetchCommon(function () {
+
+            //Fetch session key from model to get latest json files
+            ref.model.FetchSessionKey(function (key) {
+
+                //Fetch latest National Results
+                ref.model.FetchResults(dataset, election_event, area, key, function (results) {
+                    if (results != null) {                                                
+                        ref.dataset = dataset;
+                        ref.election_event = election_event;
+                        ref.area = area;
+                        ref.key = key;
+                        ref.event = event;
+                        ref.resultData = results;
+                        ref.selectedEventID = election_event;
+                        
+                        if (ref.isNational && area === 'National') {
+                            document.getElementById('txtElectionEventHeading').innerHTML = "NATIONAL ASSEMBLY - " + ref.selectedEventYear;
+                        }
+                        else if (ref.isNational && area !== 'National') {
+                            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "NATIONAL ASSEMBLY - " + ref.selectedEventYear;
+                        }
+
+                        if (!ref.isNational) {
+                            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "PROVINCIAL LEGISLATURE - " + ref.selectedEventYear;
+                        }
+
+                        if (area == 'Province99') {
+                            document.getElementById("txtElectionEventHeading").innerHTML = "<b>OUT OF COUNTRY VOTES </b>";
+                            document.getElementById("imgtl2019").src = "imgs/time_icon_selected.png";
+                            document.getElementById("tl2019").style.color = "#428bca";
+                            document.getElementById("tl2019").style.fontWeight = "bold";
+                            ref.FillOutOfCountry(results);
+                        }
+                        else {
+                            ref.Fill(results, event);
+                        }
+                    }
+                    else {
+                        var prov = "";
+                        if (area == 'Province7') {
+                            prov = "LIMPOPO";
+                        }
+                        else if (area == 'Province5') {
+                            prov = "MPUMULANGA";
+                        }
+                        else if (area == 'Province3') {
+                            prov = "GAUTENG";
+                        }
+                        else if (area == 'Province2') {
+                            prov = "FREESTATE";
+                        }
+                        else if (area == 'Province8') {
+                            prov = "NORTH WEST";
+                        }
+                        else if (area == 'Province4') {
+                            prov = "KWAZULU-NATAL";
+                        }
+                        else if (area == 'Province1') {
+                            prov = "EASTERN CAPE";
+                        }
+                        else if (area == 'Province9') {
+                            prov = "WESTERN CAPE";
+                        }
+                        else if (area == 'Province6') {
+                            prov = "NORTHERN CAPE";
+                        }
+                        else if (area == 'Province99') {
+                            prov = "OUT OF COUNTRY";
+                        }                        
+                    }
+                });                
+            });
+        });
+    }
+    catch (e) {
+        console.log("DashBoardView - FetchResults - " + e.message);
+        
+    }
+}
+
+
+DashBoardView.prototype.FetchMapClickResults = function (area, event, map_id) {
+    var ref = this;
+    if (ref.selectedEventYear == '') {
+        ref.selectedEventYear = '2019';
+    }
+    var eventid = ref.FetchEventIdByYear(ref.isNational, ref.selectedEventYear);
+    var key = '';
+
+    if (eventid == '699' || eventid == '827') {
+        key = ref.key;
+    }
+
+    ref.model.FetchResults('', eventid, area, key, function (results) {
+        ref.event = event;
+        ref.area = area;
+        ref.election_event = eventid;
+        ref.resultData = results;
+
+        if (ref.isNational && ref.area === 'National') {
+            document.getElementById('txtElectionEventHeading').innerHTML = "NATIONAL ASSEMBLY - " + ref.selectedEventYear;
+        }
+        else if (ref.isNational && ref.area !== 'National') {
+            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "NATIONAL ASSEMBLY - " + ref.selectedEventYear;
+        }
+
+        if (!ref.isNational) {
+            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "PROVINCIAL LEGISLATURE - " + ref.selectedEventYear;
+        }
+
+        ref.Fill(results, event, map_id);
+    });
+}
+
+
+DashBoardView.prototype.FillTimeLine = function () {
+    if (this.selectedEventYear == '1999') {
+        document.getElementById("imgtl1999").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl1999").style.color = "#428bca";
+        document.getElementById("tl1999").style.fontWeight = "bold";
+    }
+    if (this.selectedEventYear == '2004') {
+        document.getElementById("imgtl2004").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2004").style.color = "#428bca";
+        document.getElementById("tl2004").style.fontWeight = "bold";
+    }
+    if (this.selectedEventYear == '2009') {
+        document.getElementById("imgtl2009").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2009").style.color = "#428bca";
+        document.getElementById("tl2009").style.fontWeight = "bold";
+    }
+    if (this.selectedEventYear == '2014') {
+        document.getElementById("imgtl2014").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2014").style.color = "#428bca";
+        document.getElementById("tl2014").style.fontWeight = "bold";
+    }
+    if (this.selectedEventYear == '2019') {
+        document.getElementById("imgtl2019").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2019").style.color = "#428bca";
+        document.getElementById("tl2019").style.fontWeight = "bold";
+    }
+}
+
+
+DashBoardView.prototype.FetchPreviousResults = function (election_year) {
+    var ref = this;
+    var eventid = ref.FetchEventIdByYear(ref.isNational, election_year);
+    ref.selectedEventYear = election_year;
+    var key = '';
+    
+    if (eventid == '699' || eventid == '827') {
+        key = ref.key;
+    }
+
+    document.getElementById("imgtl1999").src = "imgs/time_icon.png";
+    document.getElementById("imgtl2004").src = "imgs/time_icon.png";
+    document.getElementById("imgtl2009").src = "imgs/time_icon.png";
+    document.getElementById("imgtl2014").src = "imgs/time_icon.png";
+    document.getElementById("imgtl2019").src = "imgs/time_icon.png";
+
+    document.getElementById("tl1999").style.color = "darkgrey";
+    document.getElementById("tl1999").style.fontWeight = "normal";
+    document.getElementById("tl2004").style.color = "darkgrey";
+    document.getElementById("tl2004").style.fontWeight = "normal";
+    document.getElementById("tl2009").style.color = "darkgrey";
+    document.getElementById("tl2009").style.fontWeight = "normal";
+    document.getElementById("tl2014").style.color = "darkgrey";
+    document.getElementById("tl2014").style.fontWeight = "normal";
+    document.getElementById("tl2019").style.color = "darkgrey";
+    document.getElementById("tl2019").style.fontWeight = "normal";
+
+
+    if (election_year == '1999') {
+        document.getElementById("imgtl1999").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl1999").style.color = "#428bca";
+        document.getElementById("tl1999").style.fontWeight = "bold";
+    }
+    if (election_year == '2004') {
+        document.getElementById("imgtl2004").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2004").style.color = "#428bca";
+        document.getElementById("tl2004").style.fontWeight = "bold";
+    }
+    if (election_year == '2009') {
+        document.getElementById("imgtl2009").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2009").style.color = "#428bca";
+        document.getElementById("tl2009").style.fontWeight = "bold";
+    }
+    if (election_year == '2014') {
+        document.getElementById("imgtl2014").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2014").style.color = "#428bca";
+        document.getElementById("tl2014").style.fontWeight = "bold";
+    }
+    if (election_year == '2019') {
+        document.getElementById("imgtl2019").src = "imgs/time_icon_selected.png";
+        document.getElementById("tl2019").style.color = "#428bca";
+        document.getElementById("tl2019").style.fontWeight = "bold";
+    }
+
+    if (ref.area == 'Province99') {
+        ref.area = 'National';
+    }
+
+    ref.model.FetchResults('', eventid, ref.area, key, function (results) {
+        ref.selectedEventYear = election_year;
+        ref.election_event = eventid;
+        ref.selectedEventID = eventid;
+        ref.resultData = results;
+
+        if (ref.isNational && ref.area === 'National') {
+            document.getElementById('txtElectionEventHeading').innerHTML = "NATIONAL ASSEMBLY - " + ref.selectedEventYear;
+        }
+        if (ref.isNational && ref.area !== 'National') {
+            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "NATIONAL ASSEMBLY - " + ref.selectedEventYear;
+        }
+
+        if (!ref.isNational) {
+            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "PROVINCIAL LEGISLATURE - " + ref.selectedEventYear;
+        }
+
+        ref.Fill(results, null);
+    });
+}
+
+
+DashBoardView.prototype.FetchEventIdByYear = function (isNational, election_year) {
+    var ref = this;
+    var election_event_id = 0;
+    if (ref.isNational && election_year == '1999') {
+        election_event_id = '1';
+    }
+    if (ref.isNational && election_year == '2004') {
+        election_event_id = '45';
+    }
+    if (ref.isNational && election_year == '2009') {
+        election_event_id = '146';
+    }
+    if (ref.isNational && election_year == '2014') {
+        election_event_id = '291';
+    }
+    if (ref.isNational && election_year == '2019') {
+        election_event_id = '699';
+        key = ref.key;
+    }
+
+    if (!ref.isNational && election_year == '1999') {
+        election_event_id = '42';
+    }
+    if (!ref.isNational && election_year == '2004') {
+        election_event_id = '50';
+    }
+    if (!ref.isNational &&  election_year == '2009') {
+        election_event_id = '169';
+    }
+    if (!ref.isNational &&  election_year == '2014') {
+        election_event_id = '292';
+    }
+    if (!ref.isNational &&  election_year == '2019') {
+        election_event_id = '827';
+        key = ref.key;
+    }
+    return (election_event_id);
+}
+
+
+
+//Loads data that is fetched from the webserver
+DashBoardView.prototype.LoadResults = function (dataset, election_event, area, event) {
+    var ref = this;
+
+    try {
+        //Fetch Party Lookups
+        this.model.FetchCommon(function () {
+
+            //Fetch session key from model to get latest json files
+            ref.model.FetchSessionKey(function (key) {
+
+                //Fetch latest National Results
+                ref.model.FetchResults(dataset, election_event, area, key, function (results) {
+                    if (results != null) {
+                        ref.dataset = dataset;
+                        ref.election_event = election_event;
+                        ref.area = area;
+                        ref.key = key;
+                        ref.event = event;
+
+                        document.getElementById("txtCompleted").innerText = results.Perc_Complete + '%';
+
+                        if (election_event === '291' && area === 'National') {
+                            document.getElementById('txtElectionEventHeading').innerHTML = "NATIONAL ASSEMBLY" + " ";
+                        }
+                        else if (election_event === '291' && area !== 'National') {
+                            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "NATIONAL ASSEMBLY";
+                        }
+
+                        if (election_event === '292') {
+                            document.getElementById("txtElectionEventHeading").innerHTML = "<b>" + results.Province.toUpperCase() + "</b>" + ' - ' + "PROVINCIAL LEGISLATURE";
+                        }
+
+                        if (area == 'Province99') {
+                            document.getElementById("txtElectionEventHeading").innerHTML = "<b>OUT OF COUNTRY VOTES</b>";
+                            ref.FillOutOfCountry(results);
+                        }
+                        else {
+                            ref.Fill(results, event);
+                        }
+                    }
+                });
+            });
+        });
+    }
+    catch (e) {
+        console.log("DashBoardView - LoadResults - " + e.message);
+        
+    }
+}
+
+
+
+
+DashBoardView.prototype.Fill = function (data, event, map_id) {
+    var ref = this;
+    try
+    {
+        if (event == 'map_click')
+        {
+            this.voterStatsView.Fill(data);
+            this.leadingPartyView.Fill(data);
+            this.mapView.Fill(map_id);
+            if (!this.mapView.isMaximized) {
+                this.resultTableView.Fill(data);
+            }
+        }
+        else if (event == 'menu_click') {
+            this.voterStatsView.Fill(data);
+            this.leadingPartyView.Fill(data);
+
+            if (this.mapView.isMaximized) {
+                this.Resize('map');
+            }
+            else {
+                this.mapView.Fill();
+            }
+
+            if (this.resultTableView.isMaximized) {
+                this.isOutOfCountry = false;
+                this.Resize('resultstable');
+            }
+            else {
+                this.resultTableView.Fill(data);
+            }            
+        }
+        else{
+
+            this.voterStatsView.Fill(data);
+
+            if (this.resultTableView.isMaximized) {
+                this.mapView.Fill();
+                this.Resize('resultstable');
+            }
+            else {
+                //this.mapView.selectedMap = "#image-map";
+                this.mapView.Fill();
+            }
+
+            this.leadingPartyView.Fill(data);
+            this.resultTableView.fillTableMode = "topten";
+
+            if (this.mapView.isMaximized) {
+                this.Resize('map');
+                this.resultTableView.Fill(data);
+            }
+            else {
+                this.resultTableView.Fill(data);
+            }            
+
+            this.ProgressGauge(data);
+        }
+
+        this.FillTimeLine();
+    }
+    catch (e)
+    {
+        console.log("DashBoardView - Fill - " + e.message);
+        
+    }
+}
+
+
+DashBoardView.prototype.FillOutOfCountry = function (data) {
+    try {
+        var ref = this;
+        this.voterStatsView.Fill(data);
+        this.leadingPartyView.Fill(data);
+        
+        if (this.mapView.isMaximized) {
+            this.Resize('map');
+            this.Resize('resultstable');
+        }
+        else {
+            this.Resize('resultstable');
+        }
+        this.isOutOfCountry = true;
+    }
+    catch (e) {
+        console.log("DashBoardView - FillOutOfCountry - " + e.message);
+        
+    }
+}
+
+
+DashBoardView.prototype.Resize = function (view) {
+    try
+    {
+        if (this.isOutOfCountry) {
+            this.FetchResults('2019', this.selectedEventID, 'National', 'menu_click');
+            return;
+        }
+
+        var item = null;
+
+        if (view === 'map')
+        {            
+            if (this.resize_state === 'min')
+            {
+                this.arrIdxs = [];
+
+                for (var i = 0; i < this.mapView.parentContainer.childNodes.length; i++) {
+                    item = this.mapView.parentContainer.childNodes[i];
+
+                    if (item.id != null && item.id != this.mapView.container.id) {
+                        this.arrIdxs.push(i);
+                        this.mapView.parentContainer.removeChild(item);
+                    }
+                }
+                
+                this.mapView.Maximize();
+                this.resize_state = 'max';
+                this.active_max_view = 'map';
+                document.getElementById('divToggleMap').title = "Minimize Map";
+
+                //document.getElementById("divImgLegend").style.visibility = "visible";
+                //document.getElementById("imgLegend").src = this.model.FetchLegendUri(this.election_event, this.key);
+            }
+            else if (this.resize_state === 'max')
+            {                
+                this.mapView.parentContainer.insertBefore(this.mapView.spacer, this.mapView.parentContainer.childNodes[11]);
+                this.mapView.parentContainer.insertBefore(this.resultTableView.container, this.mapView.parentContainer.childNodes[16]);
+                                                
+                this.resize_state = 'min';
+                this.active_max_view = null;
+                this.mapView.isMaximized = false;
+                this.mapView.Fill();                               
+
+                document.getElementById('divToggleMap').title = "Maximize Map";
+                //document.getElementById("divImgLegend").style.visibility = "hidden";
+                //document.getElementById("imgLegend").src = "";
+            }
+        }
+        if (view === 'resultstable')
+        {
+            if (this.resize_state === 'min') {
+                this.arrIdxs = [];
+
+                for (var i = 0; i < this.resultTableView.parentContainer.childNodes.length; i++) {
+                    item = this.resultTableView.parentContainer.childNodes[i];
+
+                    if (item.id != null && item.id != this.resultTableView.container.id) {
+                        this.arrIdxs.push(i);
+                        this.resultTableView.parentContainer.removeChild(item);
+                    }
+                }                
+                this.resize_state = 'max';
+                this.active_max_view = 'resulttable';
+                this.resultTableView.isMaximized = true;
+
+                document.getElementById('imgResizeTableView').title = "Minimize Party Results";
+            }
+            else if (this.resize_state === 'max')
+            {
+                this.resultTableView.parentContainer.insertBefore(this.resultTableView.spacer, this.resultTableView.parentContainer.childNodes[10]);
+                this.resultTableView.parentContainer.insertBefore(this.mapView.container, this.resultTableView.parentContainer.childNodes[5]);
+
+                this.resize_state = 'min';
+                this.active_max_view = null;
+                this.resultTableView.isMaximized = false;
+
+                document.getElementById('imgResizeTableView').title = "Maximize Party Results";
+            }
+            this.resultTableView.resize_state = this.resize_state;
+            this.resultTableView.Fill(this.resultData);
+        }
+    }
+    catch (e) {
+        console.log("DashBoardView - Resize - " + e.message);
+        
+    }
+}
+
+
+
+DashBoardView.prototype.ProgressGauge = function (data) {
+    try
+    {        
+        var align = 'right';
+        var isInside = true;
+        var fnt_progress_color = 'white';
+        
+        if (parseFloat(data.Perc_Complete) <= 50) {
+            var isInside = false;
+            var align = 'left';
+            var fnt_progress_color = '#054278';
+        }
+
+        var chart = new Highcharts.Chart({
+            title: {
+                text: null,
+                align: 'center',
+                margin: 0,
+            },
+            chart: {
+                renderTo: 'divProgress',
+                backgroundColor: '#054278',
+                type: 'bar',
+                width: 181,
+                height: 45,
+                marginTop: -15,
+                marginLeft: 0
+            },
+            credits: false,
+            tooltip: false,
+            legend: false,
+            navigation: {
+                buttonOptions: {
+                    enabled: false
+                }
+            },
+            xAxis: {
+                visible: false,
+            },
+            yAxis: {
+                visible: false,
+                min: 0,
+                max: 100,
+            },
+            series: [{
+                data: [100],
+                grouping: false,
+                animation: false,
+                enableMouseTracking: false,
+                showInLegend: false,
+                color: '#e0e0e0',
+                pointWidth: 25,
+                borderWidth: 0,
+                borderRadiusTopLeft: '1px',
+                borderRadiusTopRight: '1px',
+                borderRadiusBottomLeft: '1px',
+                borderRadiusBottomRight: '1px',
+                dataLabels: {
+                    className: '',                    
+                    enabled: false,
+                    align: 'right',
+                    style: {
+                        color: '#e0e0e0',
+                        textOutline: false,
+                    }
+                }
+            }, {
+                enableMouseTracking: false,
+                data: [parseFloat(data.Perc_Complete)],                
+                borderRadiusBottomLeft: '1px',
+                borderRadiusBottomRight: '1px',                
+                color: '#428bca',
+                borderWidth: 0,
+                pointWidth: 25,
+                animation: {
+                    duration: 250,
+                },
+                dataLabels: {
+                    enabled: true,
+                    isInside: isInside,
+                    align: align,          
+                    marginTop: 10,
+                    y: 5,
+                    format: '{point.y} %',
+                    style: {         
+                        
+                        fontSize: '11pt',
+                        color: fnt_progress_color,
+                        textOutline: false,
+                    }
+                }
+            }]
+        });
+    }
+    catch (e) {
+        console.log(e.message);
+    }
+}
+
+
+Element.prototype.insertChildAtIndex = function (child, index) {
+    if (!index) index = 0
+    if (index >= this.children.length) {
+        this.appendChild(child)
+    } else {
+        this.insertBefore(child, this.children[index])
+    }
+}
+
+function MapView(view) {
+    this.isMaximized = false;
+    this.parent = view;
+    this.htmlElement = document.getElementById("mapView");
+    this.container = document.getElementById("divPartyResultsMapContainer");
+    this.parentContainer = document.getElementById("divResultsContainer");
+    this.spacer = document.getElementById("divSpacer");
+    this.scales = [];
+    this.selectedMap = "";
+}
+
+
+
+MapView.prototype.Maximize = function(){
+    try    
+    {
+        var map_src = this.parent.model.FetchMapUri(this.parent.dataset, this.parent.election_event, this.parent.area, this.parent.key, '_1024');
+        var img = document.createElement('img');
+        img.src = map_src;
+        img.useMap = "#image-map-1024";
+
+        if (this.selectedMap != "" && this.scales.length > 0) {
+            if (this.selectedMap.indexOf("-1024") == -1) {
+                img.useMap = this.selectedMap + "-1024";
+            }
+            else {
+                img.useMap = this.selectedMap;
+            }
+        }
+
+        if (this.htmlElement.childNodes.length === 2) {
+            this.htmlElement.removeChild(this.htmlElement.childNodes[1]);
+        }
+
+        this.htmlElement.appendChild(img);
+        this.isMaximized = true;
+    }
+    catch (e) {
+        console.log("MapView - Maximize - " + e.message);
+        
+    }
+}
+
+
+
+MapView.prototype.Fill = function (map_id) {
+    try
+    {
+        if (this.parent.event === 'map_click' || this.parent.event === 'menu_click' || this.parent.event === '') {
+            var map_src = "";
+            var img = document.createElement('img');
+
+            if (this.isMaximized) {
+                map_src = this.parent.model.FetchMapUri(this.parent.dataset, this.parent.election_event, this.parent.area, this.parent.key, '_1024');                
+            }
+            else {
+                if (this.parent.area == 'Province99') {
+                    this.parent.area = 'National';
+                    this.parent.isOutOfCountry = false;
+                }
+                map_src = this.parent.model.FetchMapUri(this.parent.dataset, this.parent.election_event, this.parent.area, this.parent.key, '');
+                img.style.width = "480px";
+            }            
+            img.src = map_src;
+
+            if (this.parent.area === 'National') {
+                if (!this.isMaximized) {                    
+                    img.useMap = "#image-map";
+                    this.selectedMap = "#image-map";
+                }
+                else {
+                    img.useMap = "#image-map-1024";
+                }
+            }
+
+            if (this.selectedMap != "" && this.parent.area !== 'National') {
+                if (this.selectedMap.indexOf('-1024') > 0) {
+                    var el = document.getElementsByName(this.selectedMap.replace('#', ''))[0];
+                    img.useMap = this.Scale(550, 480, el.id.replace('_1024', ''));
+                    img.useMap = "#" + document.getElementById(el.id).name.replace("-1024", "");
+                }
+                else {
+                    img.useMap = this.selectedMap;                                        
+                }
+            }
+
+            if (this.parent.event == 'menu_click') {
+                var sMap = '';
+                var isNationalLevel = true;
+                var el = null;
+                if (this.parent.area == 'National') {
+                    sMap = "#image-map";
+                }
+                if (this.parent.area == 'Province1') {
+                    sMap = "#image-map-ec";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province2') {
+                    sMap = "#image-map-fs";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province3') {
+                    sMap = "#image-map-gt";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province4') {
+                    sMap = "#image-map-kz";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province5') {
+                    sMap = "#image-map-mp";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province6') {
+                    sMap = "#image-map-nc";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province7') {
+                    sMap = "#image-map-lp";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province8') {
+                    sMap = "#image-map-nw";
+                    isNationalLevel = false;
+                }
+                if (this.parent.area == 'Province9') {
+                    sMap = "#image-map-wc";
+                    isNationalLevel = false;
+                }
+
+                if (!isNationalLevel) {
+                    el = document.getElementsByName(sMap.replace('#', ''))[0];
+                    img.useMap = this.Scale(550, 480, el.id.replace('_1024', ''));
+                    img.useMap = "#" + document.getElementById(el.id).name.replace("-1024", "");
+                    this.selectedMap = img.useMap;
+                }
+            }
+
+            if (map_id != null) {
+                if (map_id.indexOf('_1024') == -1) {
+                    img.useMap = this.Scale(550, 480, map_id);
+                    img.useMap = "#" + document.getElementById(map_id).name;
+                }
+                else {
+                    img.useMap = "#" + document.getElementById(map_id).name;
+                }
+                this.selectedMap = img.useMap;
+            }
+
+            if (this.parent.election_event === '292') {
+                document.getElementById("cmdMapBC").style.visibility = "hidden";
+            }
+            else if (this.parent.election_event === '291') {
+                if (document.getElementById("cmdMapBC") != null) {
+                    document.getElementById("cmdMapBC").style.visibility = "visible";
+                }
+            }
+
+            if (this.htmlElement.childNodes.length === 2) {
+                this.htmlElement.removeChild(this.htmlElement.childNodes[1]);
+            }
+
+            this.htmlElement.appendChild(img);
+        }
+    }
+    catch (e) {
+        console.log("MapView - Fill - " + e.message);
+        
+    }
+}
+
+MapView.prototype.Scale = function (old_width, new_width, map_id)
+{
+    try
+    {
+        var ids = this.scales.indexOf(map_id);
+
+        if (ids == -1) {
+            var areas = document.getElementById(map_id).getElementsByTagName("area");
+            var scale_fact = new_width / old_width;
+
+            for (var i = 0; i < areas.length; i++) {
+                var coords = areas[i].getAttribute('coords').split(",");
+                var new_coords = [];
+
+                for (var x = 0; x < coords.length; x++) {
+                    var new_coord = parseInt(coords[x] * scale_fact);
+                    new_coords.push(new_coord);
+                }
+                areas[i].setAttribute('coords', new_coords.toString());
+            }
+
+            this.scales.push(map_id);
+        }
+    }
+    catch (e) {
+        alert('Scale : ' + e.message);
+    }
+    return (document.getElementById("imgmap_fs_test"));
+}
+
+
+function PartyResultsView(view)
+{
+    this.isMaximized = false;
+    this.parent = view;
+    this.years = [2014,2009,2004,1999];
+    this.randomCircle = ['dot_full', 'dot_small', 'dot_medium'];
+    this.htmlElement = document.getElementById("partyResultsViewTable");
+    this.container = document.getElementById("divPartyResultsSection");
+    this.statsContainer = document.getElementById("divPartyResultsStatsSection");
+    this.parentContainer = document.getElementById("divResultsContainer");
+    this.spacer = document.getElementById("divSpacer");
+    this.activeView = 'table';
+    this.fillTableMode = "topten";
+    this.resize_state = 'min';
+}
+
+
+
+PartyResultsView.prototype.Fill = function (data) {
+    try {
+        if (data === 'switch') {
+            data = this.parent.resultData;
+            if (this.activeView === 'table') {
+                this.activeView = 'barchart';
+            }
+            else if (this.activeView === 'barchart') {
+                this.activeView = 'table';
+            }
+        }
+
+        if (this.activeView === 'table') {
+            if (this.fillTableMode == "topten") {
+                this.FillTableTopTen(data);
+            }
+            else {
+                this.FillTable(data);
+            }
+        }
+        else if (this.activeView === 'barchart') {
+            this.FillBarChart(data);
+        }
+    }
+    catch (e) {
+        console.log("PartyResultsView - Fill - " + e.message);
+    }
+}
+
+
+
+PartyResultsView.prototype.FillTableTopTen = function (data) {
+    try {
+        var hasSeats = false;
+
+        if (data.SeatsComplete > 0) {
+            hasSeats = true;
+        }
+
+        this.fillTableMode = "topten";
+
+        var ref = this;
+        for (var i = 0; i < this.statsContainer.childNodes.length; i++) {
+            if (this.statsContainer.childNodes[i].id != null) {
+                this.statsContainer.removeChild(this.statsContainer.childNodes[i]);
+            }
+        }
+
+        //Clear table
+        if (this.htmlElement.childNodes.length > 3) {
+            var len = this.htmlElement.childNodes.length;
+
+            for (var i = 2; i < len; i++) {
+                this.htmlElement.removeChild(this.htmlElement.childNodes[2]);
+            }
+        }
+
+        document.getElementById("imgStatsView").src = './imgs/bargraph.png';
+        document.getElementById("partyResultsViewHeader").innerText = "PARTY RESULTS";
+        
+        //Loop through PartyBallotResults
+        for (i = 0; i < 10; i++) {
+
+            var partyResult = data.PartyBallotResults[i];
+            var web_info = this.parent.model.FetchPartyWebInfo(partyResult.ID);
+
+            if (web_info != null) {
+                var tbody = document.createElement('tbody');
+                tbody.classList.add("table_results_item_container");
+
+                var row = document.createElement('tr');
+
+
+                var colColor = document.createElement('td');
+                //colColor.style.backgroundColor = web_info.sWebColour;
+
+                var test_div = document.createElement('div');
+                test_div.style.width = "10px";
+                test_div.style.height = "33px";
+                test_div.style.backgroundColor = web_info.sWebColour;
+
+                colColor.appendChild(test_div);
+
+                var colImg = document.createElement('td');
+                colImg.style.width = "24px";
+                var img = document.createElement('img');
+                img.src = "imgs/parties/" + web_info.PartyImage; // + '?rnd=' +  Math.random();
+                img.style.width = "24px";
+                img.style.height = "24px";
+                img.title = web_info.PartyFullName;
+                colImg.appendChild(img);
+
+                var colPartyName = document.createElement('td');
+                colPartyName.classList.add("table_result_item");
+                colPartyName.style.marginLeft = "10px";
+                colPartyName.innerText = web_info.Name;
+                colPartyName.title = web_info.PartyFullName;
+                
+                var colVotes = document.createElement('td');
+                colVotes.classList.add("table_result_item");
+                colVotes.style.width = "50px";
+                colVotes.innerText = partyResult.TotalValidVotes.toLocaleString().replace(/,/g, " ");
+
+                var colSeatsWon = document.createElement('td');
+                colSeatsWon.classList.add("table_result_item");
+                colSeatsWon.style.width = "30px";
+                colSeatsWon.classList.add("table_results_heading_item");
+
+                if (hasSeats) {
+                    colSeatsWon.innerText = partyResult.TotalSeatsWon.toString();
+                }
+
+                var colPercVotes = document.createElement('td');
+                colPercVotes.classList.add("table_result_item");
+                colPercVotes.style.width = "80px";
+                colPercVotes.style.height = "100%";
+
+                var fPerc = parseFloat(partyResult.PercOfVotes).toFixed(2);
+                colPercVotes.innerText = fPerc + ' %';
+
+                var td_latest_compared = document.createElement('td');
+                td_latest_compared.classList.add("chart_item");
+                td_latest_compared.style.borderLeftWidth = "2px";
+                td_latest_compared.style.borderLeftStyle = "solid";
+                td_latest_compared.style.borderLeftColor = "#0c3661";
+                //#0c3661
+                var latest_span = document.createElement('span');
+
+                var lat_pxs = this.ComparisonChart(partyResult.PercOfVotes);
+
+                latest_span.classList.add("circle_chart");
+                latest_span.style.height = lat_pxs;
+                latest_span.style.width = lat_pxs;
+                latest_span.title = partyResult.PercOfVotes.toFixed(2) + " %";
+
+                td_latest_compared.appendChild(latest_span);
+
+                //Party Details and results
+                row.appendChild(colColor);
+                row.appendChild(colImg);
+                row.appendChild(colPartyName);
+                row.appendChild(colVotes);
+                row.appendChild(colPercVotes);
+                row.appendChild(colSeatsWon);
+
+                //Party Comparison
+                var compare = this.parent.model.FetchPartyComparison(partyResult.ID, this.parent.election_event, this.parent.area);
+
+                for (var x = 0; x < this.years.length; x++) {
+                    var compdata = null;
+                    var year = this.years[x];
+
+                    for (var j = 0; j < compare.length; j++) {
+                        if (year === compare[j].Year) {
+                            compdata = compare[j];
+                            break;
+                        }
+                    }
+
+                    var td_chart_item = document.createElement('td');
+                    td_chart_item.classList.add("chart_item");                    
+                    td_chart_item.style.height = "31px";
+                    td_chart_item.style.borderColor = "#c1c1c1";
+
+                    if (year == '2014') {
+                        td_chart_item.style.borderLeftStyle = "solid";
+                        td_chart_item.style.borderLeftWidth = "2px";
+                        td_chart_item.style.borderLeftColor = "#0c3661";
+                    }
+
+                    if (compdata != null) {
+                        var div_row = document.createElement('div');
+                        div_row.classList.add("row");
+
+                        var div_col_main = document.createElement('div');
+                        div_col_main.classList.add("column");
+
+                        var div_row_arrow = document.createElement('div');
+                        div_row_arrow.classList.add("row");
+
+                        var div_col_arrow = document.createElement('div');
+                        div_col_arrow.classList.add("column");
+
+                        var div_row_stat = document.createElement('div');
+                        div_row_stat.classList.add("row");
+
+                        var div_col_stat = document.createElement('div');
+                        div_col_stat.classList.add("column");
+
+                        var img_arrow = document.createElement('img');
+
+                        if (year > 1999) {
+                            if ((j - 1) > -1) {
+                                if (parseFloat(compdata.PercOfVotes) > parseFloat(compare[j - 1].PercOfVotes)) {
+                                    img_arrow.src = "imgs/up.png";
+                                }
+                                else {
+                                    img_arrow.src = "imgs/down.png";
+                                }                                
+                            }
+                            else {
+                                if (compare.length == 1) {
+                                    img_arrow.src = "imgs/na.png";
+                                    img_arrow.style.opacity = "0.4";
+                                }
+                                else {
+                                    img_arrow.src = "imgs/up.png";
+                                }
+                            }
+                        }
+
+                        img_arrow.style.width = "14px";
+                        img_arrow.style.height = "14px";
+
+                        div_col_stat.innerText = compdata.PercOfVotes.toFixed(2);
+                        div_col_stat.style.fontFamily = "Arial";
+                        div_col_stat.style.fontSize = "8pt";
+
+                        if (compare.length > 1) {
+                            div_col_arrow.appendChild(img_arrow);
+                        }
+
+                        div_row_stat.appendChild(div_col_stat);
+
+                        div_row_arrow.appendChild(div_col_arrow);
+
+                        div_col_main.appendChild(div_row_stat);
+                        div_col_main.appendChild(div_row_arrow);
+
+                        div_row.appendChild(div_col_main);
+
+                        td_chart_item.appendChild(div_row);
+                        prev_stat = parseFloat(compdata.PercOfVotes);
+                    }
+                    else {                        
+                        var img_arrow = document.createElement('img');
+                        img_arrow.src = "imgs/na.png";
+                        img_arrow.style.opacity = "0.4";
+                        img_arrow.style.height = "16px";
+                        img_arrow.style.width = "16px";
+                        td_chart_item.appendChild(img_arrow);                        
+                    }
+                    row.appendChild(td_chart_item);
+                }
+
+                tbody.appendChild(row);
+                this.htmlElement.appendChild(tbody);
+            }
+        }
+
+        var tbody_2 = document.createElement('tbody');
+        tbody_2.classList.add("table_results_item_container");
+
+        var more_row = document.createElement('tr');
+        var more_row_col = document.createElement('td');
+        var more_row_col_2 = document.createElement('td');
+
+        more_row_col_2.style.width = "10px";
+        more_row.style.height = "33px";
+
+        more_row_col.colSpan = 9;
+        more_row_col.style.fontFamily = "Arial";
+        more_row_col.style.fontSize = "9pt";
+        more_row_col.style.cursor = "pointer";
+
+        more_row_col.innerHTML = "<b><u>MORE</u></b>";
+
+        more_row_col.onclick = function () {
+            ref.FillTable(data);
+        };
+
+        more_row.appendChild(more_row_col_2);
+        more_row.appendChild(more_row_col);
+
+        tbody_2.appendChild(more_row);
+
+        this.htmlElement.appendChild(tbody_2);
+
+        this.statsContainer.appendChild(this.htmlElement);
+
+        if (hasSeats) {
+            document.getElementById("colSeatsWon").style.width = "10px";
+            document.getElementById("colSeatsWon").innerText = "SEATS";
+        }
+    }
+    catch (e) {
+        console.log("PartyResultsView - FillTableTopTen - " + e.message);
+        
+    }
+}
+
+
+
+PartyResultsView.prototype.FillTable = function (data) {
+    try
+    {                
+        var hasSeats = false;
+
+        if (data.SeatsComplete > 0) {
+            hasSeats = true;
+        }
+
+        this.fillTableMode = "full";
+
+        for (var i = 0; i < this.statsContainer.childNodes.length; i++) {
+            if (this.statsContainer.childNodes[i].id != null) {
+                this.statsContainer.removeChild(this.statsContainer.childNodes[i]);
+            }
+        }
+
+        //Clear table
+        if (this.htmlElement.childNodes.length > 3) {
+            var len = this.htmlElement.childNodes.length;
+
+            for (var i = 2; i < len; i++) {
+                this.htmlElement.removeChild(this.htmlElement.childNodes[2]);
+            }
+        }
+
+        
+        document.getElementById("imgStatsView").src = './imgs/bargraph.png';
+        document.getElementById("partyResultsViewHeader").innerText = "PARTY RESULTS";
+                
+        //Loop through PartyBallotResults
+        for (i = 0; i < data.PartyBallotResults.length; i++) {
+
+            var partyResult = data.PartyBallotResults[i];
+            var web_info = this.parent.model.FetchPartyWebInfo(partyResult.ID);
+
+            if (web_info != null) {
+            var tbody = document.createElement('tbody');
+            tbody.classList.add("table_results_item_container");
+            
+            var row = document.createElement('tr');
+            
+            var colColor = document.createElement('td');
+            var test_div = document.createElement('div');
+            test_div.style.width = "10px";
+            test_div.style.height = "33px";
+            test_div.style.backgroundColor = web_info.sWebColour;
+
+            colColor.appendChild(test_div);
+
+            var colImg = document.createElement('td');
+            colImg.style.width = "24px";
+            var img = document.createElement('img');
+            img.src = "imgs/parties/" + web_info.PartyImage; // + '?rnd=' + Math.random();
+            img.style.width = "24px";
+            img.style.height = "24px";
+            img.title = web_info.PartyFullName;
+            
+            colImg.appendChild(img);
+
+            var colPartyName = document.createElement('td');
+            colPartyName.classList.add("table_result_item");
+            colPartyName.style.marginLeft = "10px";
+            colPartyName.innerText = web_info.Name;
+            colPartyName.title = web_info.PartyFullName;
+             
+            var colVotes = document.createElement('td');
+            colVotes.classList.add("table_result_item");
+            colVotes.style.width = "80px";
+            colVotes.innerText = partyResult.TotalValidVotes.toLocaleString().replace(/,/g, " ");
+            
+            var colPercVotes = document.createElement('td');
+            colPercVotes.classList.add("table_result_item");
+            colPercVotes.style.width = "80px";
+            colPercVotes.style.height = "100%";
+
+            var colSeatsWon = document.createElement('td');
+            colSeatsWon.classList.add("table_result_item");
+            colSeatsWon.style.width = "30px";            
+            colSeatsWon.classList.add("table_results_heading_item");
+
+            if (hasSeats) {
+                colSeatsWon.innerText = partyResult.TotalSeatsWon.toString();
+            }
+
+            var fPerc = parseFloat(partyResult.PercOfVotes).toFixed(2);
+            colPercVotes.innerText = fPerc + ' %';
+                                    
+            var td_latest_compared = document.createElement('td');
+            td_latest_compared.classList.add("chart_item");
+            td_latest_compared.style.borderLeftWidth = "2px";
+            td_latest_compared.style.borderLeftStyle = "solid";
+            td_latest_compared.style.borderLeftColor = "#0c3661";
+            //#0c3661
+            var latest_span = document.createElement('span');
+
+            var lat_pxs = this.ComparisonChart(partyResult.PercOfVotes);
+
+            latest_span.classList.add("circle_chart");
+            latest_span.style.height = lat_pxs;
+            latest_span.style.width = lat_pxs;
+            latest_span.title = partyResult.PercOfVotes.toFixed(2) + " %";
+
+            td_latest_compared.appendChild(latest_span);
+            
+            //Party Details and results
+            row.appendChild(colColor);
+            row.appendChild(colImg);
+            row.appendChild(colPartyName);
+            row.appendChild(colVotes);
+            row.appendChild(colPercVotes);
+            row.appendChild(colSeatsWon);
+            
+            //Party Comparison
+            var compare = this.parent.model.FetchPartyComparison(partyResult.ID, this.parent.election_event, this.parent.area);
+
+                for (var x = 0; x < this.years.length; x++) {
+                    var compdata = null;
+                    var year = this.years[x];
+
+                    for (var j = 0; j < compare.length; j++) {
+                        if (year === compare[j].Year) {
+                            compdata = compare[j];
+                            break;
+                        }
+                    }
+
+                    var td_chart_item = document.createElement('td');
+                    td_chart_item.classList.add("chart_item");                    
+                    td_chart_item.style.height = "31px";
+                    td_chart_item.style.borderColor = "#c1c1c1";
+
+                    if (year == '2014') {
+                        td_chart_item.style.borderLeftStyle = "solid";
+                        td_chart_item.style.borderLeftWidth = "2px";
+                        td_chart_item.style.borderLeftColor = "#0c3661";
+                    }
+
+                    if (compdata != null) {
+                        var div_row = document.createElement('div');
+                        div_row.classList.add("row");
+
+                        var div_col_main = document.createElement('div');
+                        div_col_main.classList.add("column");
+
+                        var div_row_arrow = document.createElement('div');
+                        div_row_arrow.classList.add("row");
+
+                        var div_col_arrow = document.createElement('div');
+                        div_col_arrow.classList.add("column");
+
+                        var div_row_stat = document.createElement('div');
+                        div_row_stat.classList.add("row");
+
+                        var div_col_stat = document.createElement('div');
+                        div_col_stat.classList.add("column");
+
+                        var img_arrow = document.createElement('img');
+
+                        if (year > 1999) {
+                            if ((j - 1) > -1) {
+                                if (parseFloat(compdata.PercOfVotes) > parseFloat(compare[j - 1].PercOfVotes)) {
+                                    img_arrow.src = "imgs/up.png";
+                                }
+                                else {
+                                    img_arrow.src = "imgs/down.png";
+                                }
+                            }
+                            else {
+                                if (compare.length == 1) {
+                                    img_arrow.src = "imgs/na.png";
+                                    img_arrow.style.opacity = "0.4";
+                                }
+                                else {
+                                    img_arrow.src = "imgs/up.png";
+                                }
+                            }
+                        }
+
+                        img_arrow.style.width = "14px";
+                        img_arrow.style.height = "14px";
+
+                        div_col_stat.innerText = compdata.PercOfVotes.toFixed(2);
+                        div_col_stat.style.fontFamily = "Arial";
+                        div_col_stat.style.fontSize = "8pt";
+
+                        if (compare.length > 1) {
+                            div_col_arrow.appendChild(img_arrow);
+                        }
+
+                        div_row_stat.appendChild(div_col_stat);
+
+                        div_row_arrow.appendChild(div_col_arrow);
+
+                        div_col_main.appendChild(div_row_stat);
+                        div_col_main.appendChild(div_row_arrow);
+
+                        div_row.appendChild(div_col_main);
+
+                        td_chart_item.appendChild(div_row);
+                        prev_stat = parseFloat(compdata.PercOfVotes);
+                    }
+                    else {
+                        var img_arrow = document.createElement('img');
+                        img_arrow.src = "imgs/na.png";
+                        img_arrow.style.opacity = "0.4";
+                        img_arrow.style.height = "16px";
+                        img_arrow.style.width = "16px";
+                        td_chart_item.appendChild(img_arrow);
+                    }
+
+                    row.appendChild(td_chart_item);
+                }
+            }
+
+            tbody.appendChild(row);
+            this.htmlElement.appendChild(tbody);                        
+        }
+        this.statsContainer.appendChild(this.htmlElement);
+        
+    }
+    catch (e) {
+        console.log("PartyResultsView - FillTable - " + e.message);
+        
+    }
+}
+
+
+PartyResultsView.prototype.FillBarChart = function (data) {
+
+    //Clear table
+    this.activeView = 'barchart';
+    document.getElementById("imgStatsView").src = './imgs/table.png';
+
+    try {
+        if (data == null) {
+            data = this.parent.resultData;
+        }
+
+        for (var i = 0; i < this.statsContainer.childNodes.length; i++) {
+            if (this.statsContainer.childNodes[i].id != null) {
+                this.statsContainer.removeChild(this.statsContainer.childNodes[i]);
+            }
+        }
+
+        var div_chart = document.createElement('div');
+        div_chart.classList.add("column");
+        div_chart.id = 'chrt_test';
+
+        this.statsContainer.appendChild(div_chart);
+
+        var arr_chrt_data = [];
+        var len_data = 0;
+
+        if (this.resize_state == 'min') {
+            len_data = 5;
+        }
+        else {
+            len_data = data.PartyBallotResults.length;
+        }
+
+        for (var i = 0; i < len_data; i++) {
+            var party = this.parent.model.FetchPartyLabel(data.PartyBallotResults[i].ID).value;
+            var votes = data.PartyBallotResults[i].PercOfVotes.toFixed(2);
+            var web_info = this.parent.model.FetchPartyWebInfo(data.PartyBallotResults[i].ID);
+            var color = web_info.sWebColour;
+
+            arr_chrt_data.push({ "name": party, "y": parseFloat(votes), "color": color });
+            var t = party;
+        }
+
+        var p = [
+            {
+                "name": "Parties",
+                "colorByPoint": true,
+                "data": arr_chrt_data
+            }
+        ]
+
+        Highcharts.chart('chrt_test', {
+            chart: {
+                type: 'column'
+            },
+            title: {
+                text: document.getElementById("txtElectionEventHeading").innerText
+            },
+            subtitle: {
+                text: ''
+            },
+            xAxis: {
+                type: 'category'
+            },
+            yAxis: {
+                title: {
+                    text: 'Percentage Support'
+                }
+
+            },
+            legend: {
+                enabled: false
+            },
+            plotOptions: {
+                series: {
+                    borderWidth: 0,
+                    dataLabels: {
+                        enabled: true,
+                        format: '{point.y:.1f}%'
+                    }
+                }
+            },
+
+            tooltip: {
+                headerFormat: '<span style="font-size:11px">{series.name}</span><br>',
+                pointFormat: '<span style="color:{point.color}">{point.name}</span>: <b>{point.y:.2f}%</b> of total<br/>'
+            },
+            "series": p
+        });
+    }
+    catch (e) {
+        console.log("PartyResultsView - FillBarChart - " + e.message);
+    }
+}
+
+
+PartyResultsView.prototype.ComparisonChart = function (perc_support) {
+    var support = perc_support.toFixed(2);
+    var px = 0;
+
+    try {
+        if (support >= 0 && support < 10) {
+            px = "3.3px";
+        }
+        else if (support >= 10 && support < 20) {
+            px = "6.6px";
+        }
+        else if (support >= 20 && support < 30) {
+            px = "9.9px";
+        }
+        else if (support >= 30 && support < 40) {
+            px = "13.2px";
+        }
+        else if (support >= 40 && support < 50) {
+            px = "16.5px";
+        }
+        else if (support >= 50 && support < 60) {
+            px = "19.8px";
+        }
+        else if (support >= 60 && support < 70) {
+            px = "23.1px";
+        }
+        else if (support >= 70 && support < 80) {
+            px = "26.4px";
+        }
+        else if (support >= 80 && support <= 100) {
+            px = "30px";
+        }
+    }
+    catch (e) {
+        console.log("PartyResultsView - ComparisonChart - " + e.message);
+    }
+    return (px);
+}
+
+
+
+PartyResultsView.prototype.fetchComparison = function (data) {
+
+
+}
+
+
+function VoterStatsView(view) {
+    this.parent = view;
+}
+
+
+VoterStatsView.prototype.Fill = function (data)
+{
+    try
+    {
+        document.getElementById("voterStatsViewHeader").innerText = "ELECTION STATISTICS";
+
+        document.getElementById("txtCaptureProgress").innerText = data.Perc_Complete + ' %';
+        document.getElementById("txtVDsCaptured").innerHTML = '<b>' + data.VDsComplete.toLocaleString().replace(/,/g, " ") + '</b>' + ' of ' + '<b>' + data.VDExpected.toLocaleString().replace(/,/g, " ") + '</b>';
+        document.getElementById("txtValidVotes").innerText = data.ValidVotesCast.toLocaleString().replace(/,/g, " ");
+        document.getElementById("txtSpoiltVotes").innerText = data.SpoiltVotes.toLocaleString().replace(/,/g, " ");
+        document.getElementById("txtTotalVotesCast").innerText = data.TotalVotesCast.toLocaleString().replace(/,/g, " ");
+
+        if (data.Province != 'Out of country') {
+            document.getElementById("txtVoterTurnout").innerText = data.PercentagePoll.toLocaleString().replace(/,/g, " ") + " %";
+            document.getElementById("txtRegisteredPop").innerText = data.RegisteredVoters.toLocaleString().replace(/,/g, " ");
+        }
+        else {
+            document.getElementById("txtVoterTurnout").innerText = "N/A";
+            document.getElementById("txtRegisteredPop").innerText = "N/A";
+        }        
+    }
+    catch (e)
+    {
+        console.log("VoterStatsView - Fill - " + e.message);
+        
+    }
+}
+
+
+
+
+
+
+
+
+function LeadingPartyView(view)
+{
+    this.parent = view;
+    this.htmlElement = document.getElementById("leadingPartyView");
+}
+
+
+LeadingPartyView.prototype.Fill = function (data) {
+    try
+    {
+        document.getElementById("leadingPartyViewHeader").innerText = "TOP THREE PARTIES";
+
+        for (var i = 0; i < 3; i++)
+        {
+            var partyResult = data.PartyBallotResults[i];
+            var web_info = this.parent.model.FetchPartyWebInfo(partyResult.ID);
+
+            if (web_info != null) {
+                var partyColor = document.getElementById("lead_party_" + (i + 1) + "_color");
+                partyColor.style.backgroundColor = web_info.sWebColour;
+                partyColor.title = web_info.PartyFullName;
+
+                var partyName = document.getElementById("lead_party_" + (i + 1) + "_name");
+                partyName.innerText = web_info.Name;
+                partyName.title = web_info.PartyFullName;
+
+                var t = parseInt(partyResult.TotalValidVotes);
+                var s = t.toLocaleString();
+                var votes = s.replace(/,/g, " ");
+
+                var partyVotes = document.getElementById("lead_party_" + (i + 1) + "_votes");
+                partyVotes.innerText = votes;
+
+                var partyVotesPerc = document.getElementById("lead_party_" + (i + 1) + "_votes_perc");
+                var fPerc = parseFloat(partyResult.PercOfVotes).toFixed(2);
+                partyVotesPerc.innerText = fPerc + ' %';
+
+                this.Fill_Donut([{ "name": web_info.Name, "y": parseFloat(partyResult.PercOfVotes.toFixed(2)), "color": web_info.sWebColour }, { "name": "", "y": 100 - parseFloat(partyResult.PercOfVotes.toFixed(2)), "color": "#f5f5f5" }], 'top_party_donut_' + (i + 1), i==2);
+            }
+        }
+    }
+    catch (e)
+    {
+        console.log("LeadingPartyView - Fill - " + e.message);
+        
+    }
+}
+
+
+
+
+
+LeadingPartyView.prototype.Fill_Donut = function (data, id, show_credits) {
+    try
+    {        
+        Highcharts.chart(id, {
+            chart: {
+                type: 'pie',
+                plotBackgroundColor: null,
+                plotBorderWidth: 0,
+                plotShadow: false,
+                width: 100,
+                height: 100
+            },
+            credits: {
+                enabled: show_credits,
+                style: {
+                    fontSize: '7px'
+                }
+            },
+            title: {
+                text: data[0].y,
+                style: "font-size: 10pt;",
+                align: 'center',
+                verticalAlign: 'middle',
+                y: 5,
+                x: 1
+            },
+            tooltip: {                
+                pointFormat: null
+            },
+            plotOptions: {
+                pie: {
+                    dataLabels: {
+                        enabled: false,
+                        distance: 0,
+                        style: {
+                            fontWeight: 'bold',
+                            color: 'white'
+                        }
+                    },
+                    startAngle: 0,
+                    endAngle: 360,
+                    center: ['50%', '50%'],
+                    size: '170%'
+                }
+            },
+            series: [{
+                type: 'pie',
+                name: 'Party Support',
+                innerSize: '50%',
+                data: data
+            }]
+        });
+    }
+    catch (e) {
+        console.log(e.message);
+    }
+}

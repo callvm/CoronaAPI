@@ -1,9 +1,10 @@
-Eastern Cape-12
-Free State-8
-Gauteng-14
-KwaZulu Natal-22
-Limpopo-24
-Mpumalanga-10
-Western Cape-10
-North West-12
-Northern Cape-10
+Gauteng-1018
+Western Cape-717
+KwaZulu Natal-186
+Free State-76
+North West-9
+Mpumalanga-12
+Limpopo-14
+Eastern Cape-15
+Northern Cape-7
+Unallocated-90

@@ -1,0 +1,11 @@
+insert into daily_report (id, cases_today, cases_total, current_day, percent_change) values (1, 1353, 1353, "2020-03-31", 100);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (1, 633, 633, 100, "Gauteng", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (2, 325, 325, 100, "Western Cape", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (3, 179, 179, 100, "KwaZulu Natal", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (4, 74, 74, 100, "Free State", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (5, 8, 8, 100, "North West", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (6, 12, 12, 100, "Mpumalanga", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (7, 14, 14, 100, "Limpopo", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (8, 12, 12, 100, "Eastern Cape", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (9, 6, 6, 100, "Northern Cape", 1);
+insert into provinces (id, cases_today, cases_total, percent_change, province_name, daily_report_id) values (10, 90, 90, 100, "Unallocated", 1);

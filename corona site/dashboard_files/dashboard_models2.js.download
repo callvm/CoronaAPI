@@ -1,0 +1,337 @@
+﻿var dashboard_root_uri = "https://www.elections.org.za/NPEDashboard/Data/Dashboard";
+var root_uri = "https://www.elections.org.za/NPEDashboard/Data";
+var selected_election_event = "";
+var selected_area = "";
+var selected_platform = "";
+var selected_dataset = "";
+
+//============================================================================================
+//============================================================================================
+//
+//============================================================================================
+//============================================================================================
+function DashBoardModel() {
+        
+    //Models
+    this.jsonModel = new JSONModel();
+    this.resultsModel = new ResultsModel();
+        
+    //Data
+    this.partyList = null;
+    this.partySearchList = null;
+    this.nationalComparisonList = null;
+    this.provincialComparisonList = null;
+
+    this.resultsData = null;
+    this.mapUri = null;
+    
+    this.session_key = '';
+}
+
+
+
+
+DashBoardModel.prototype.FetchCommon = function (callback) {
+    var ref = this;
+    try
+    {        
+        ref.jsonModel.FetchJSON(root_uri + '/Common/PartyList.json', function (party_list_results) { //?rnd=' + Math.random(), function (party_list_results) {
+            try {
+                ref.jsonModel.FetchJSON(root_uri + '/Common/PartySearchList.json', function (party_search_list_results) { //?rnd=' + Math.random(), function (party_search_list_results) {
+                    try {
+                        ref.jsonModel.FetchJSON(root_uri + '/Common/SupportComparisonNational.json' /*?rnd=' + Math.random()*/, function (national_comparison_results) {
+                            try {
+                                ref.jsonModel.FetchJSON(root_uri + '/Common/SupportComparisonProvincal.json' /*?rnd=' + Math.random()*/, function (provincial_comparison_results) {
+                                    try
+                                    {
+                                        ref.partyList = party_list_results;
+                                        ref.partySearchList = party_search_list_results;
+                                        ref.nationalComparisonList = national_comparison_results;
+                                        ref.provincialComparisonList = provincial_comparison_results;
+
+                                        if (ref.partyList == null || ref.partySearchList == null || ref.nationalComparisonList == null || ref.provincialComparisonList == null) {
+                                            throw new Error("Error - Fetching Common files");
+                                        }
+                                        callback();
+                                    }
+                                    catch (e) {
+                                        throw new Error("Error : Set  - " + e.message);
+                                    }
+                                });
+                            }
+                            catch (e) {
+                                throw new Error("Error : FetchSupportComparisonProvincial - " + e.message);
+                            }
+                        });
+                    }
+                    catch (e) {
+                        throw new Error("Error : SupportComparisonNational - " + e.message);
+                    }
+                });
+            }
+            catch (e) {
+                throw new Error("Error : PartySearchList - " + e.message);
+            }
+        });
+    }
+    catch (e) {
+        var err = new Error("Error : FetchPartyList - " + e.message);
+        console.log("FetchCommon - " + err.message);
+        alert(err);
+    }
+}
+
+
+
+DashBoardModel.prototype.FetchPartyLabel = function (key) {
+    try {
+        for (var i = 0; i < this.partySearchList.length; i++) {
+            if (this.partySearchList[i].key === key) {
+                return (this.partySearchList[i]);
+            }
+        }
+    }
+    catch (e) {
+        console.log("FetchPartyLabel - " + e.message);
+    }
+}
+
+
+
+DashBoardModel.prototype.FetchPartyWebInfo = function (id) {
+    try {
+        for (var i = 0; i < this.partyList.length; i++) {
+            if (this.partyList[i].ID === id) {
+                return (this.partyList[i]);
+            }
+        }
+    }
+    catch (e) {
+        console.log("FetchPartyWebInfo - " + e.message);
+    }
+}
+
+
+
+DashBoardModel.prototype.FetchPartyComparison = function (party_id, election_event, area) {
+    var comparisons = [];
+
+    var results = null;
+
+    try {
+        if (election_event == '699' || election_event == '45' || election_event == '146' || election_event == '291') {
+            results = this.nationalComparisonList;
+        }
+        else {
+            results = this.provincialComparisonList;
+        }
+
+        //itterate through comparison lookup list
+        for (var i = 0; i < results.length; i++) {
+
+            //valuate specific party id 
+            if (results[i].PartyID === party_id) {
+
+                //Itterate through ballot results for the macthed party id
+                for (var j = 0; j < results[i].PartyBallotResults.length; j++) {
+
+                    var entity = new ComparisonEntity();
+                    entity.Year = results[i].PartyBallotResults[j].Year;
+                    entity.ElectoralEventID = results[i].PartyBallotResults[j].ElectoralEventID;
+                    entity.PartyID = party_id;
+
+                    if (entity.ElectoralEventID == 1 || entity.ElectoralEventID == 42) {
+                        entity.Year = 1999;
+                    }
+                    if (entity.ElectoralEventID == 45 || entity.ElectoralEventID == 50) {
+                        entity.Year = 2004;
+                    }
+                    if (entity.ElectoralEventID == 146 || entity.ElectoralEventID == 169) {
+                        entity.Year = 2009;
+                    }
+                    if (entity.ElectoralEventID == 291 || entity.ElectoralEventID == 292) {
+                        entity.Year = 2014;
+                    }
+
+                    if (area === 'National') {
+                        entity.Area = "National";
+                        entity.PercOfVotes = results[i].PartyBallotResults[j].PercOfVotes;
+                        comparisons.push(entity);
+                    }
+                    else {
+                        var area_id = parseInt(area.substring(area.length - 1, area.length));
+                        var area_results = results[i].PartyBallotResults[j].ProvinceResults;
+                        for (var a = 0; a < area_results.length; a++) {
+                            var areaItem = area_results[a];
+                            if (areaItem.ProvinceID === area_id) {
+                                entity.Area = area;
+                                entity.AreaID = areaItem.ProvinceID;
+                                entity.PercOfVotes = areaItem.PercOfVotes;
+                                comparisons.push(entity);
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+    catch (e) {
+        console.log("FetchPartyComparison - " + e.message);
+    }
+    return (comparisons);
+}
+
+
+
+DashBoardModel.prototype.FetchSessionKey = function (callback) {
+    var ref = this;
+
+    try
+    {        
+        this.jsonModel.FetchJSON(dashboard_root_uri + '/session.json?rnd=' + Math.random(), function (result) {
+            ref.session_key = result.latest_session;
+            callback(ref.session_key);
+        });
+    }
+    catch (e) {
+        console.log("FetchSessionKey - " + e.message);
+        alert(e.message);
+    }
+}
+
+
+
+DashBoardModel.prototype.FetchResults = function (dataset, election_event, area, key, callback) {
+    var ref = this;
+    try
+    {
+        //fetch result
+        if (election_event == '699' || election_event == '827') {
+            this.jsonModel.FetchJSON(dashboard_root_uri + '/' + election_event + '/EEID' + election_event + area + '_' + key + '.json?rnd=' + Math.random(), function (result) {
+                callback(result);
+            });
+        }
+        else {
+            this.jsonModel.FetchJSON(dashboard_root_uri + '/' + election_event + '/EEID' + election_event + area + '.json', function (result) { //?rnd=' + Math.random(), function (result) {
+                callback(result);
+            });
+        }
+    }
+    catch (e) {
+        console.log("FetchResults - " + e.message);
+        alert(e);
+    }
+}
+
+
+
+DashBoardModel.prototype.FetchMapUri = function (dataset, election_event, area, key, size) {
+    try
+    {
+        if (election_event == '699' || election_event == '827')
+        {            
+            return (dashboard_root_uri + '/' + election_event + '/imgs/' + area + '_' + this.session_key + size + '.png');
+        }
+        else {
+            return (dashboard_root_uri + '/' + election_event + '/imgs/' + area + size + '.png');
+        }
+    }
+    catch (e) {
+        console.log("FetchMapUri - " + e.message);
+    }
+}
+
+
+DashBoardModel.prototype.FetchLegendUri = function (election_event, key) {
+    try {
+        if (election_event == '699' || election_event == '827') {
+            return (dashboard_root_uri + '/' + election_event + '/imgs/legend_' + this.session_key + '.png');
+        }
+        else {
+            return (dashboard_root_uri + '/' + election_event + '/imgs/legend.png');
+        }        
+    }
+    catch (e) {
+        console.log("FetchMapUri - " + e.message);
+    }
+}
+
+
+
+/**
+ *
+ * */
+DashBoardModel.prototype.FetchProvincialResults = function () {
+
+}
+
+
+
+
+//============================================================================================
+//============================================================================================
+//
+//============================================================================================
+//============================================================================================
+function ResultsModel() {
+    this.name = "";
+}
+
+
+
+//============================================================================================
+//============================================================================================
+//
+//============================================================================================
+//============================================================================================
+function ImageModel() {
+    this.name = "";
+}
+
+
+
+
+function JSONModel() {
+
+}
+
+
+JSONModel.prototype.FetchJSON = function (uri, callback) {
+    $.ajax({
+        url: uri,
+        dataType: "json",
+        crossDomain: true,
+        success: function (result) {
+            callback(result);
+        },
+        error: function (request, status, error) {
+            console.log("FetchJSON - " + request.responseText);            
+        }
+    });   
+}
+
+
+
+JSONModel.prototype.LoadHTML = function (uri, callback) {
+    $.ajax({
+        url: uri,
+        dataType: "json",
+        crossDomain: true,
+        success: function (result) {
+            callback(result);
+        }
+    });
+}
+
+
+
+
+function ComparisonEntity() {
+    this.ElectoralEventID = 0;
+    this.PartyID = 0;
+    this.PercOfVotes = 0.0;
+    this.Year = "";
+    this.Area = "";
+    this.AreaID = 0;
+}

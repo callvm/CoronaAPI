@@ -15,5 +15,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface DailyReportRepository extends JpaRepository<DailyReport, Long>{
     DailyReport findByCurrentDay(Date d);
-
+    DailyReport findTopByOrderByIdDesc();
 }
